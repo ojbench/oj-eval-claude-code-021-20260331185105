@@ -2,7 +2,6 @@
 #include <vector>
 #include <algorithm>
 #include <map>
-#include <set>
 
 using namespace std;
 
@@ -14,64 +13,63 @@ int main() {
     cin >> n;
 
     vector<pair<long long, long long>> points(n);
-    map<long long, vector<long long>> byY; // Group points by y-coordinate
+    map<long long, vector<long long>> byX; // points grouped by x-coordinate
 
     for (int i = 0; i < n; i++) {
         cin >> points[i].first >> points[i].second;
-        byY[points[i].second].push_back(points[i].first);
+        byX[points[i].first].push_back(points[i].second);
     }
 
-    // Sort x-coordinates for each y-level
-    for (auto& [y, xs] : byY) {
-        sort(xs.begin(), xs.end());
+    // Sort y-coordinates for each x
+    for (auto& [x, ys] : byX) {
+        sort(ys.begin(), ys.end());
     }
 
     long long count = 0;
 
-    // Get all unique y-coordinates
-    vector<long long> uniqueY;
-    for (auto& [y, xs] : byY) {
-        uniqueY.push_back(y);
+    // Get all unique x-coordinates
+    vector<long long> uniqueX;
+    for (auto& [x, ys] : byX) {
+        uniqueX.push_back(x);
     }
 
-    int numY = uniqueY.size();
+    int numX = uniqueX.size();
 
-    // For each pair of y-coordinates as bottom and top of rectangle
-    for (int yi = 0; yi < numY; yi++) {
-        for (int yj = yi + 1; yj < numY; yj++) {
-            long long y1 = uniqueY[yi];
-            long long y2 = uniqueY[yj];
+    // For each pair of x-coordinates (left and right edges)
+    for (int xi = 0; xi < numX; xi++) {
+        for (int xj = xi + 1; xj < numX; xj++) {
+            long long x1 = uniqueX[xi];
+            long long x2 = uniqueX[xj];
 
-            vector<long long>& xs1 = byY[y1];
-            vector<long long>& xs2 = byY[y2];
+            // Find valid pairs of y-coordinates
+            vector<long long>& ys1 = byX[x1];
+            vector<long long>& ys2 = byX[x2];
 
-            // For each x at y1, try to pair with each x at y2
-            for (long long x1 : xs1) {
-                for (long long x2 : xs2) {
-                    if (x1 >= x2) continue; // Must form a valid rectangle
+            for (long long y1 : ys1) {
+                for (long long y2 : ys2) {
+                    if (y1 >= y2) continue;
 
+                    // Check if rectangle [x1,x2] × [y1,y2] has any other points
                     bool valid = true;
 
-                    // Check if any point is in the rectangle [x1, x2] × [y1, y2]
-                    // excluding corners (x1, y1) and (x2, y2)
-                    for (int yk = yi; yk <= yj && valid; yk++) {
-                        long long y = uniqueY[yk];
-                        vector<long long>& xs = byY[y];
+                    // Check all x-coordinates in the range
+                    for (int xk = xi; xk <= xj && valid; xk++) {
+                        long long x = uniqueX[xk];
+                        vector<long long>& ys = byX[x];
 
-                        // Find all x values in range [x1, x2]
-                        auto it_start = lower_bound(xs.begin(), xs.end(), x1);
-                        auto it_end = upper_bound(xs.begin(), xs.end(), x2);
+                        // Find points in y-range [y1, y2]
+                        auto it_start = lower_bound(ys.begin(), ys.end(), y1);
+                        auto it_end = upper_bound(ys.begin(), ys.end(), y2);
 
-                        for (auto it = it_start; it != it_end; ++it) {
-                            long long x = *it;
+                        for (auto it = it_start; it != it_end && valid; ++it) {
+                            long long y = *it;
 
-                            // Check if this point invalidates the rectangle
-                            if (x == x1 && y == y1) continue; // Bottom-left corner - OK
-                            if (x == x2 && y == y2) continue; // Top-right corner - OK
+                            // Skip the two corners
+                            if (x == x1 && y == y1) continue;
+                            if (x == x2 && y == y2) continue;
 
-                            // Any other point in the rectangle makes it invalid
+                            // Found another point in the rectangle
                             valid = false;
-                            break;
                         }
                     }
 
