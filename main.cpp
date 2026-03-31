@@ -1,14 +1,10 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <map>
 #include <set>
 
 using namespace std;
-
-struct Point {
-    long long x, y;
-    int idx;
-};
 
 int main() {
     ios::sync_with_stdio(false);
@@ -17,44 +13,71 @@ int main() {
     int n;
     cin >> n;
 
-    vector<Point> points(n);
+    vector<pair<long long, long long>> points(n);
+    map<long long, vector<long long>> byY; // Group points by y-coordinate
+
     for (int i = 0; i < n; i++) {
-        cin >> points[i].x >> points[i].y;
-        points[i].idx = i;
+        cin >> points[i].first >> points[i].second;
+        byY[points[i].second].push_back(points[i].first);
+    }
+
+    // Sort x-coordinates for each y-level
+    for (auto& [y, xs] : byY) {
+        sort(xs.begin(), xs.end());
     }
 
     long long count = 0;
 
-    // For each pair of points, check if they can form a valid rectangle
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            if (i == j) continue;
+    // Get all unique y-coordinates
+    vector<long long> uniqueY;
+    for (auto& [y, xs] : byY) {
+        uniqueY.push_back(y);
+    }
 
-            // Check if point i can be bottom-left and point j can be top-right
-            if (points[i].x < points[j].x && points[i].y < points[j].y) {
-                long long x1 = points[i].x;
-                long long y1 = points[i].y;
-                long long x2 = points[j].x;
-                long long y2 = points[j].y;
+    int numY = uniqueY.size();
 
-                bool valid = true;
+    // For each pair of y-coordinates as bottom and top of rectangle
+    for (int yi = 0; yi < numY; yi++) {
+        for (int yj = yi + 1; yj < numY; yj++) {
+            long long y1 = uniqueY[yi];
+            long long y2 = uniqueY[yj];
 
-                // Check if any other point lies inside or on the boundary (except corners)
-                for (int k = 0; k < n; k++) {
-                    if (k == i || k == j) continue;
+            vector<long long>& xs1 = byY[y1];
+            vector<long long>& xs2 = byY[y2];
 
-                    long long x = points[k].x;
-                    long long y = points[k].y;
+            // For each x at y1, try to pair with each x at y2
+            for (long long x1 : xs1) {
+                for (long long x2 : xs2) {
+                    if (x1 >= x2) continue; // Must form a valid rectangle
 
-                    // Check if point k is inside or on the boundary of the rectangle
-                    if (x >= x1 && x <= x2 && y >= y1 && y <= y2) {
-                        valid = false;
-                        break;
+                    bool valid = true;
+
+                    // Check if any point is in the rectangle [x1, x2] × [y1, y2]
+                    // excluding corners (x1, y1) and (x2, y2)
+                    for (int yk = yi; yk <= yj && valid; yk++) {
+                        long long y = uniqueY[yk];
+                        vector<long long>& xs = byY[y];
+
+                        // Find all x values in range [x1, x2]
+                        auto it_start = lower_bound(xs.begin(), xs.end(), x1);
+                        auto it_end = upper_bound(xs.begin(), xs.end(), x2);
+
+                        for (auto it = it_start; it != it_end; ++it) {
+                            long long x = *it;
+
+                            // Check if this point invalidates the rectangle
+                            if (x == x1 && y == y1) continue; // Bottom-left corner - OK
+                            if (x == x2 && y == y2) continue; // Top-right corner - OK
+
+                            // Any other point in the rectangle makes it invalid
+                            valid = false;
+                            break;
+                        }
                     }
-                }
 
-                if (valid) {
-                    count++;
+                    if (valid) {
+                        count++;
+                    }
                 }
             }
         }
